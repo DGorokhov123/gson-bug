@@ -32,7 +32,7 @@ class UserBadDeserializer implements JsonDeserializer<User> {
 }
 ```
 в сигнатуре метода deserialize, который требуется переопределить, кидается 
-другое исключение - JsonSyntaxException, которое является родительским по
+другое исключение - JsonParseException, которое является родительским по
 отношению к JsonSyntaxException и не ловится конструкцией try-catch, написаной выше
 ```пример из кода:
         try {
