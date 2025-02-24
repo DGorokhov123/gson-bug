@@ -1,21 +1,21 @@
-Найден баг в библиотеке GSON. Актуально для версии 2.12.1
+I found a bug in GSON library. It's actual fo version 2.12.1
 
-Описание бага:
+Bug description:
 
-Сигнатура метода fromJson выглядит так:
+Method fromJson signature looks like that:
 ```
 public <T> T fromJson(String json, Class<T> classOfT) throws JsonSyntaxException {
 ```
 
-то есть предполагается, что ловить надо JsonSyntaxException:
+so, it's obvious to coders to catch JsonSyntaxException:
 ```
 try {
     goodGson.fromJson(badJson, User.class);
 } catch (JsonSyntaxException e) {
-    System.out.println("Хороший deserializer поймал JsonSyntaxException");
+    System.out.println("Good deserializer caught JsonSyntaxException");
 }
 ```
-Такая конструкция работает, пока мы не добавим Deserializer:
+Such construction works until we add Deserializer:
 ```
 Gson badGson = new GsonBuilder()
           .registerTypeAdapter(User.class, new UserBadDeserializer())
@@ -23,32 +23,37 @@ Gson badGson = new GsonBuilder()
 
 class UserBadDeserializer implements JsonDeserializer<User> {
     @Override
-    public User deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context) throws JsonParseException {
+    public User deserialize(JsonElement json, Type typeOfT, 
+                         JsonDeserializationContext context) throws JsonParseException {
         JsonObject jsonObject = json.getAsJsonObject();
-        if (!jsonObject.has("name")) throw new JsonParseException("2json should contain the name field!");
+        if (!jsonObject.has("name")) 
+                     throw new JsonParseException("json should contain the name field!");
         String name = jsonObject.get("name").getAsString();
         return new User(name);
     }
 }
 ```
-в сигнатуре метода deserialize, который требуется переопределить, кидается 
-другое исключение - JsonParseException, которое является родительским по
-отношению к JsonSyntaxException и не ловится конструкцией try-catch, написаной выше
-```пример из кода:
+The signature of deserialize method we should override, throws another 
+exception - JsonParseException, which is parent to JsonSyntaxException 
+and isn't caught by try-catch construction above
+It flies further and may cause unexpected behaviour. 
+
+```
         try {
             try {
                 badGson.fromJson(badJson, User.class);
             } catch (JsonSyntaxException e) {
-                System.out.println("Плохой deserializer поймал JsonSyntaxException");
+                System.out.println("Good deserializer caught JsonSyntaxException");
             }
         } catch (RuntimeException e) {
-            System.out.println("Плохой deserializer не поймал JsonSyntaxException, а " + e.getClass().getSimpleName() + " полетел дальше");
+            System.out.println("Bad deserializer didn't catch JsonSyntaxException, and " 
+                        + e.getClass().getSimpleName() + " flew further");
         }
 ```
-Решение1 : Изменение сигнатуры метода deserialize, чтобы метод кидал 
-JsonSyntaxException.
+Solution 1 : Change signature of deserialize method to throw JsonSyntaxException.
 
-Решение2 : Изменение сигнатуры метода fromJson (а также, возможно, других методов,
-использующих вызов deserialize), чтобы метод кидал JsonParseException.
+Solution 2 : Change signature of fromJson method (and other methods calling
+deserialize) to throw JsonParseException.
 
 (С) Dmitriy Gorokhov dgorokhov123@gmail.com, tg:@DGorokhov
+
